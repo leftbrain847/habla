@@ -1,7 +1,14 @@
+# One grouped PR per ecosystem per month. Security fixes are not delayed by this: the nightly
+# Command Center scan (OSV) flags vulnerable versions, and Dependabot security updates are separate.
+# @types/node stays on the runtime's major (Node 22).
 version: 2
 updates:
-  - package-ecosystem: github-actions
-    directory: /
-    schedule:
-      interval: weekly
-    open-pull-requests-limit: 5
+- package-ecosystem: github-actions
+  directory: /
+  schedule:
+    interval: monthly
+  open-pull-requests-limit: 5
+  groups:
+    all:
+      patterns:
+      - '*'
