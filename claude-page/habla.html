@@ -1,0 +1,858 @@
+<title>Habla con Valeria</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&display=swap">
+<style>
+/* Layout: one phone screen. Valeria's café fills the top, the conversation scrolls below it, the composer sits at the bottom. Single deliberate look: a Coyoacán café at dusk. */
+:root {
+  --night: #17121f;        /* café at dusk */
+  --night-2: #231b2e;
+  --paper: #fbf6ee;
+  --ink: #1e1726;
+  --ink-soft: #6b5f78;
+  --anil: #2b4fa8;         /* azul añil: Valeria */
+  --anil-soft: #dfe6f8;
+  --cempa: #f2a11f;        /* cempasúchil: you */
+  --cempa-soft: #fdecc8;
+  --rosa: #d81b6a;         /* rosa mexicano: accents, corrections */
+  --ok: #2e8b57;
+  --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--night); color: var(--paper); font: 16px/1.45 var(--body); overflow: hidden; overscroll-behavior: none; }
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px solid var(--cempa); outline-offset: 2px; }
+.side { padding-left: max(12px, env(safe-area-inset-left, 0px)); padding-right: max(12px, env(safe-area-inset-right, 0px)); }
+
+#app { height: 100%; display: grid; grid-template-rows: minmax(210px, 40%) 1fr auto; max-width: 720px; margin: 0 auto; }
+
+/* Stage */
+#stage { position: relative; overflow: hidden; background: var(--night-2); }
+#scene { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+#bar { position: absolute; top: 8px; left: 0; right: 0; display: flex; align-items: center; gap: 6px; }
+.who { display: grid; line-height: 1.1; background: rgba(23,18,31,.72); border-radius: 10px; padding: 5px 10px; }
+.who b { font: 800 17px var(--display); }
+.who span { font-size: 12px; opacity: .8; }
+.spacer { flex: 1; }
+.chip { border: 0; border-radius: 999px; padding: 6px 11px; font-size: 13px; font-weight: 700; background: rgba(251,246,238,.92); color: var(--ink); white-space: nowrap; }
+.chip.lvl { background: var(--anil); color: var(--paper); }
+#mood { font-weight: 700; }
+#mood[data-m="listening"] { color: #8fe3c0; }
+#mood[data-m="thinking"] { color: var(--cempa); }
+#mood[data-m="speaking"] { color: #9fb6ff; }
+#caption { position: absolute; left: 0; right: 0; bottom: 10px; display: flex; justify-content: center; }
+#capBox { max-width: 560px; width: 100%; background: rgba(23,18,31,.84); border-radius: 10px; padding: 7px 12px; font-size: 18px; font-weight: 700; line-height: 1.3; text-align: center; }
+#capBox[hidden] { display: none; }
+#capBox.veiled { font-weight: 400; font-style: italic; opacity: .85; }
+
+/* Conversation */
+#log { overflow-y: auto; padding-top: 14px; padding-bottom: 10px; display: flex; flex-direction: column; gap: 12px; min-height: 0; background: var(--paper); color: var(--ink); -webkit-user-select: text; user-select: text; }
+.msg { max-width: 86%; display: grid; gap: 4px; }
+.msg .bub { padding: 9px 13px; border-radius: 16px; font-size: 18px; line-height: 1.4; overflow-wrap: anywhere; }
+.msg.her { align-self: flex-start; }
+.msg.her .bub { background: var(--anil-soft); border-top-left-radius: 4px; }
+.msg.her .bub.veiled { color: var(--ink-soft); font-style: italic; font-size: 16px; }
+.msg.me { align-self: flex-end; justify-items: end; }
+.msg.me .bub { background: var(--cempa-soft); border-top-right-radius: 4px; }
+.tools { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.tool { border: 1px solid #d9d0e2; background: #fff; color: var(--ink); border-radius: 999px; padding: 3px 10px; font-size: 13px; font-weight: 700; }
+.en { font-size: 14px; color: var(--ink-soft); padding: 0 4px; }
+.fix { font-size: 15px; background: #fff; border-left: 3px solid var(--rosa); border-radius: 6px; padding: 6px 9px; color: var(--ink); max-width: 100%; }
+.fix b { color: var(--rosa); }
+.fix small { display: block; color: var(--ink-soft); font-size: 13px; }
+.tool.fixbtn { border-color: var(--rosa); color: var(--rosa); }
+.tool.okbtn { border-color: transparent; background: transparent; color: var(--ok); }
+.note { align-self: center; font-size: 13px; color: var(--ink-soft); text-align: center; max-width: 90%; }
+.note.err { color: var(--rosa); font-weight: 700; }
+.typing { display: inline-flex; gap: 4px; padding: 4px 2px; }
+.typing i { width: 7px; height: 7px; border-radius: 50%; background: var(--anil); opacity: .35; animation: blink 1.1s infinite; }
+.typing i:nth-child(2) { animation-delay: .18s; } .typing i:nth-child(3) { animation-delay: .36s; }
+@keyframes blink { 40% { opacity: 1; } }
+
+/* Composer */
+#composer { background: var(--paper); color: var(--ink); padding-top: 8px; padding-bottom: max(10px, env(safe-area-inset-bottom, 0px)); border-top: 1px solid #e6dfd2; display: grid; gap: 6px; }
+#composer form { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+#msg { min-width: 0; border: 2px solid var(--ink); border-radius: 12px; padding: 10px 12px; background: #fff; color: var(--ink); font-size: 17px; }
+#send { border: 0; border-radius: 12px; padding: 0 16px; background: var(--anil); color: var(--paper); font-weight: 700; }
+#send:disabled { opacity: .45; }
+#tip { font-size: 12px; color: var(--ink-soft); margin: 0; }
+#autoBar { height: 3px; border-radius: 2px; background: var(--anil); width: 0; transition: width linear; }
+
+/* Modals */
+.modal { position: fixed; inset: 0; background: rgba(10,7,14,.7); display: flex; align-items: center; justify-content: center; padding: 14px; z-index: 5; }
+.modal[hidden] { display: none; }
+.card { width: 100%; max-width: 480px; max-height: 100%; overflow-y: auto; background: var(--paper); color: var(--ink); border-radius: 16px; padding: 18px; display: grid; gap: 12px; -webkit-user-select: text; user-select: text; }
+.card h1 { margin: 0; font: 800 34px/1 var(--display); color: var(--anil); text-wrap: balance; }
+.card h2 { margin: 0; font: 800 24px var(--display); flex: 1; }
+.card p { margin: 0; }
+.row { display: flex; align-items: center; gap: 8px; }
+.x { border: 0; background: #ece4d6; border-radius: 10px; width: 38px; height: 38px; font-weight: 700; font-size: 18px; color: var(--ink); }
+.lvls { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
+.lv { border: 2px solid var(--anil); background: transparent; color: var(--anil); border-radius: 10px; padding: 9px 0; font: 800 17px var(--display); }
+.lv.on { background: var(--anil); color: var(--paper); }
+.mini { font-size: 13px; color: var(--ink-soft); }
+.go { border: 0; border-radius: 12px; padding: 14px; background: var(--rosa); color: #fff; font: 800 19px var(--display); }
+.set { display: grid; gap: 7px; background: #f1eadd; border-radius: 12px; padding: 12px; }
+.set h3 { margin: 0; font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-soft); }
+.set label { display: grid; gap: 4px; font-size: 15px; font-weight: 700; }
+.set label.tog { display: flex; align-items: center; gap: 8px; }
+.set label.tog input { width: 20px; height: 20px; flex: none; }
+.set select { width: 100%; min-width: 0; padding: 8px; border-radius: 8px; border: 2px solid var(--ink); background: #fff; color: var(--ink); font-weight: 400; }
+.set input[type=range] { width: 100%; accent-color: var(--anil); }
+.btn { border: 0; border-radius: 10px; padding: 10px 14px; font-weight: 700; background: #e7dfd0; color: var(--ink); justify-self: start; }
+.rev { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.rev li { background: #fff; border-radius: 10px; padding: 8px 10px; display: grid; gap: 2px; }
+.rev .was { color: var(--ink-soft); text-decoration: line-through; font-size: 14px; }
+.rev .now { font-weight: 700; }
+.rev .why { font-size: 13px; color: var(--ink-soft); }
+.words { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 15px; }
+.words b { color: var(--anil); }
+#banner { background: var(--rosa); color: #fff; font-size: 14px; font-weight: 700; padding: 8px 12px; }
+#banner[hidden] { display: none; }
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+
+<div id="app">
+  <section id="stage" aria-label="Valeria's café">
+    <canvas id="scene" aria-hidden="true"></canvas>
+    <div id="bar" class="side">
+      <div class="who"><b>Valeria</b><span id="mood" data-m="idle">Café La Conchita</span></div>
+      <span class="spacer"></span>
+      <button class="chip lvl" id="lvlBtn" type="button" aria-label="Spanish level">A2</button>
+      <button class="chip" id="revBtn" type="button" aria-label="Review">Repaso</button>
+      <button class="chip" id="setBtn" type="button" aria-label="Settings">⚙︎</button>
+    </div>
+    <div id="caption" class="side"><div id="capBox" hidden role="status"></div></div>
+  </section>
+
+  <main id="log" class="side" aria-live="polite"></main>
+
+  <footer id="composer" class="side">
+    <div id="banner" hidden></div>
+    <form id="form" autocomplete="off">
+      <input id="msg" type="text" enterkeyhint="send" placeholder="Escribe o dicta en español…" aria-label="Your message" disabled>
+      <button id="send" type="submit" disabled>Enviar</button>
+    </form>
+    <div id="autoBar"></div>
+    <p id="tip">🎤 To speak, tap the mic on your keyboard and dictate in Spanish.</p>
+  </footer>
+</div>
+
+<div class="modal" id="start">
+  <div class="card">
+    <h1>Habla con Valeria</h1>
+    <p>Valeria runs a little café in Coyoacán, Mexico City. Chat with her in Spanish like you would with a friend. She talks back out loud, at your level.</p>
+    <p class="mini">She corrects you the way a friend would: by saying it right in her reply. Tap 💡 under your message to see the correction.</p>
+    <p><b>Your level</b> (CEFR). You can change it any time.</p>
+    <div class="lvls" id="lvls"></div>
+    <p class="mini" id="lvlDesc"></p>
+    <button class="go" id="enter" type="button">Entrar al café</button>
+    <p class="mini">Uses your Claude plan. The first message asks you to allow it.</p>
+  </div>
+</div>
+
+<div class="modal" id="settings" hidden>
+  <div class="card" role="dialog" aria-labelledby="setTitle">
+    <div class="row"><h2 id="setTitle">Ajustes</h2><button class="x" type="button" data-close="settings" aria-label="Close">✕</button></div>
+    <div class="set">
+      <h3>Level</h3>
+      <label>Spanish level (CEFR)<select id="sLevel"></select></label>
+      <p class="mini" id="sLevelDesc"></p>
+    </div>
+    <div class="set">
+      <h3>Valeria's voice</h3>
+      <label class="tog"><input type="checkbox" id="sVoice"> Read her replies aloud</label>
+      <label>Voice<select id="sVoiceName"></select></label>
+      <label>Speed: <span id="sRateV"></span><input type="range" id="sRate" min="0.6" max="1.3" step="0.05"></label>
+      <label>Her words on screen
+        <select id="sSubs">
+          <option value="show">Show while she talks</option>
+          <option value="after">Show after she finishes (listening practice)</option>
+          <option value="tap">Hide until I tap</option>
+        </select>
+      </label>
+      <button class="btn" type="button" id="sTest">Test voice</button>
+    </div>
+    <div class="set">
+      <h3>Corrections</h3>
+      <label>
+        My mistakes
+        <select id="sFix">
+          <option value="tap">Check them, show when I tap 💡</option>
+          <option value="show">Check them and show right away</option>
+          <option value="off">Don't check (saves usage)</option>
+        </select>
+      </label>
+    </div>
+    <div class="set">
+      <h3>Speaking</h3>
+      <label class="tog"><input type="checkbox" id="sAuto"> Send automatically when I stop dictating</label>
+      <label>Wait before sending: <span id="sAutoV"></span><input type="range" id="sAutoMs" min="1000" max="4000" step="250"></label>
+      <p class="mini">Today: tap the mic on your phone's keyboard and talk. Turn on automatic sending and your message goes out when you pause, so you don't have to tap Enviar. Fully hands-free listening needs the desktop version of Habla, because pages inside Claude can't open the microphone themselves.</p>
+    </div>
+    <button class="btn" type="button" id="sNew">Start a new conversation</button>
+  </div>
+</div>
+
+<div class="modal" id="review" hidden>
+  <div class="card" role="dialog" aria-labelledby="revTitle">
+    <div class="row"><h2 id="revTitle">Repaso</h2><button class="x" type="button" data-close="review" aria-label="Close">✕</button></div>
+    <p class="mini">Your sentences with a more natural version. Nothing is saved after you close the page.</p>
+    <ul class="rev" id="revList"></ul>
+    <button class="btn" type="button" id="wordsBtn">Useful words from this chat</button>
+    <div class="words" id="words"></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+/* ================= Levels ================= */
+const LEVELS = {
+  A1: { name: "Beginner", rate: 0.75, subs: "show",
+    desc: "Very slow, very short sentences in the present tense.",
+    rules: "- Present tense only, plus fixed phrases (por favor, gracias, ¿cómo estás?).\n- Only the most common everyday words: food, family, numbers, colors, days, places in town.\n- One or two sentences, under 8 words each. No idioms, no slang.\n- If they seem lost, rephrase more simply or offer a choice (¿Café o chocolate?)." },
+  A2: { name: "Elementary", rate: 0.85, subs: "show",
+    desc: "Slow and clear. Simple past and 'ir a' future, everyday topics.",
+    rules: "- Present tense, 'ir a' + infinitive, and the preterite of very common verbs (fui, comí, vi, hice). No subjunctive except 'ojalá'.\n- High-frequency vocabulary about food, family, work, weekends, weather, the city.\n- One to three short sentences, under 12 words each. Simple connectors only (y, pero, porque, también).\n- At most one very common Mexican word per reply (padre, ahorita, ¿qué onda?), only when the meaning is obvious." },
+  B1: { name: "Intermediate", rate: 0.95, subs: "show",
+    desc: "Normal pace. All main tenses and some Mexican slang.",
+    rules: "- All indicative tenses (preterite, imperfect, future, present perfect) and connectors like cuando, entonces, aunque.\n- Subjunctive only in common formulas (ojalá que…, quiero que…, cuando puedas).\n- Everyday vocabulary plus topic words; if you use an unusual word, make its meaning clear from context.\n- Light Mexican flavor: padre, chido, ahorita, ¿neta?, qué onda, órale. Up to three sentences." },
+  B2: { name: "Upper intermediate", rate: 1.0, subs: "show",
+    desc: "Natural speech: subjunctive, conditionals, idioms, slang.",
+    rules: "- Natural, unsimplified speech: subjunctive, conditionals, reported speech, common idioms.\n- Share opinions, joke, tease a little.\n- Mexican expressions used naturally without explaining them (neta, chido, qué padre, no manches, está cañón, al rato).\n- Two or three sentences." },
+  C1: { name: "Advanced", rate: 1.05, subs: "after",
+    desc: "Native pace and style from Mexico City. Irony and slang, no simplifying.",
+    rules: "- Talk like a chilanga in her late twenties talking to a friend: irony, implied meaning, idioms, diminutives (ahorita, cafecito, tantito).\n- Chilango slang where natural (güey between friends, qué oso, chido, fresa, la neta, no manches).\n- Natural length, up to three sentences. Never slow down or explain." },
+  C2: { name: "Mastery", rate: 1.12, subs: "tap",
+    desc: "Fast, dense, colloquial. Wordplay and cultural references. Text hidden.",
+    rules: "- Fully native, fast, colloquial Mexico City Spanish with zero accommodation for a learner: albures kept clean, wordplay, cultural references, dropped words.\n- Up to three sentences. Never explain or simplify." },
+};
+
+/* ================= Prefs (this browser only) ================= */
+let prefs = { level: "A2", voice: true, voiceURI: "", rate: 1, subs: "show", fix: "tap", auto: false, autoMs: 2000 };
+try { prefs = Object.assign(prefs, JSON.parse(localStorage.getItem("habla-page-prefs") || "{}")); } catch (e) {}
+if (!LEVELS[prefs.level]) prefs.level = "A2";
+const savePrefs = () => { try { localStorage.setItem("habla-page-prefs", JSON.stringify(prefs)); } catch (e) {} };
+
+/* ================= Persona prompt ================= */
+function rulesTurn() {
+  const L = LEVELS[prefs.level];
+  return `You are Valeria, 29, from Guadalajara, now living in Coyoacán, Mexico City. You run the counter at Café La Conchita, a small café that sells café de olla and pan dulce (you bake the conchas yourself at 6 a.m.). You love street food, cumbia, your dog Frijol, and Chivas, even though they make you suffer. You're chatting with a friend who is learning Spanish; their native language is English. Your words are read aloud by a text-to-speech voice and shown as subtitles.
+
+Your goal: be genuinely fun to talk to while quietly helping them improve. The teaching should feel invisible.
+
+Their Spanish level is CEFR ${prefs.level} (${L.name}). Speak strictly at that level:
+${L.rules}
+
+How you talk:
+- Mexican Spanish, "tú". Never "vosotros".
+- This is a conversation, not a monologue: keep replies short.
+- Plain spoken text only: no emojis, markdown, lists, asterisks, parentheses, stage directions or translations.
+- Be a real person: react, share opinions, small stories and details from your day, joke, sometimes disagree.
+- Don't interrogate. Ask at most one question per turn, and not every turn. Sometimes just react or tell something about yourself.
+- Remember what they told you earlier in this chat and bring it back naturally.
+- If they seem lost ("¿qué?", "no entiendo", "más despacio", English, a one-word answer), simplify and rephrase right away.
+- If they use English or ask how to say something, give the Spanish naturally inside your reply and keep going in Spanish.
+- When they make a mistake, recast it: your reply naturally contains the correct version of the words they got wrong, so they hear it said right (they write "yo es cansado" and you say something with "estás cansado"). Never lecture; the app shows corrections separately.
+- Their messages may come from voice dictation: interpret odd words charitably and never comment on spelling or punctuation.
+- Text in [square brackets] is an instruction from the app, not from your friend. Follow it without mentioning it.
+- If they sincerely ask whether you're an AI, say so briefly and honestly, then keep chatting.
+
+Reply with only what Valeria says.`;
+}
+const KICKOFF = "[Your friend just walked up to your counter. Greet them warmly in one or two short sentences and start a light, easy topic. At most one question.]";
+
+/* ================= Claude (via the viewer's plan) ================= */
+let sample = null;
+let sampleState = "waiting"; // waiting | ready | absent | denied
+if (window.claude && window.claude.use) {
+  window.claude.use("sample").then((s) => { sample = s || null; sampleState = s ? "ready" : "absent"; if (!s) showBanner("Valeria needs Claude to answer. Open this page in the Claude app or on claude.ai."); }).catch(() => { sampleState = "absent"; });
+} else {
+  sampleState = "absent";
+  showBanner("Valeria needs Claude to answer. Open this page in the Claude app or on claude.ai.");
+}
+function showBanner(text) { $("banner").textContent = text; $("banner").hidden = !text; }
+const ERR = {
+  rate_limited: "You've hit a usage limit for now. Wait a bit, then send again.",
+  session_expired: "Your Claude session expired. Sign in again, then reload.",
+  refused: "Valeria couldn't answer that one. Try saying it another way.",
+  empty_completion: "Valeria didn't say anything. Try again.",
+  upstream_error: "The connection dropped. Send your message again.",
+};
+const DEAD = ["not_granted", "sampling_disabled", "not_declared", "capability_disabled", "capability_removed"];
+
+/* ================= Conversation state ================= */
+const turns = [];           // [{role, content}] what Valeria remembers this session
+const mine = [];            // [{text, fix, why}] for the review
+let busy = false;
+let started = false;
+
+// Build the input: the rules + kickoff, Valeria's greeting, then the most recent turns.
+function buildInput() {
+  const head = [{ role: "user", content: rulesTurn() + "\n\n" + KICKOFF }];
+  if (!turns.length) return head;
+  const greeting = turns[0];            // Valeria's opening line
+  let rest = turns.slice(1);
+  if (rest.length > 40) rest = rest.slice(-40);
+  if (rest.length && rest[0].role === "assistant") rest = rest.slice(1);
+  return [...head, greeting, ...rest];
+}
+
+/* ================= Chat UI ================= */
+function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+function scrollDown() { const l = $("log"); l.scrollTop = l.scrollHeight; }
+function note(text, err) { $("log").append(el("div", "note" + (err ? " err" : ""), text)); scrollDown(); }
+
+function addMine(text) {
+  const wrap = el("div", "msg me");
+  wrap.append(el("div", "bub", text));
+  const tools = el("div", "tools");
+  wrap.append(tools);
+  $("log").append(wrap); scrollDown();
+  return { wrap, tools };
+}
+
+function addHer() {
+  const wrap = el("div", "msg her");
+  const bub = el("div", "bub");
+  const dots = el("span", "typing"); dots.append(el("i"), el("i"), el("i"));
+  bub.append(dots);
+  const tools = el("div", "tools");
+  wrap.append(bub, tools);
+  $("log").append(wrap); scrollDown();
+  return { wrap, bub, tools, text: "" };
+}
+
+// "after": her words appear once she has finished speaking; "tap": only when tapped.
+function renderHer(h, text, done) {
+  h.text = text;
+  const veil = prefs.subs === "tap" || prefs.subs === "after";
+  if (veil && !h.revealed) {
+    h.bub.textContent = done ? "🔊 Tap to read" : "🔊 …";
+    h.bub.classList.add("veiled");
+    h.bub.onclick = done ? () => { h.revealed = true; renderHer(h, h.text, true); } : null;
+  } else {
+    h.bub.textContent = text;
+    h.bub.classList.remove("veiled");
+    h.bub.onclick = null;
+  }
+  scrollDown();
+}
+
+function herTools(h) {
+  h.tools.textContent = "";
+  const again = el("button", "tool", "🔊 Again"); again.type = "button";
+  again.onclick = () => speakAll(h.text, 1);
+  const slow = el("button", "tool", "🐢 Slow"); slow.type = "button";
+  slow.onclick = () => speakAll(h.text, 0.65);
+  const en = el("button", "tool", "EN"); en.type = "button";
+  en.onclick = () => translate(h, en);
+  h.tools.append(again, slow, en);
+}
+
+async function translate(h, btn) {
+  if (h.enEl) { h.enEl.hidden = !h.enEl.hidden; return; }
+  if (!sample) return;
+  btn.disabled = true; btn.textContent = "…";
+  try {
+    const { text } = await sample(`Translate this casual Mexican Spanish into natural English. Reply with only the translation.\n\n${h.text}`, { modelTier: "quick" });
+    h.enEl = el("div", "en", text.trim());
+    h.wrap.append(h.enEl); scrollDown();
+    btn.textContent = "EN";
+  } catch (e) {
+    btn.textContent = "EN";
+    if (e && e.code === "rate_limited") note(ERR.rate_limited, true);
+  } finally { btn.disabled = false; }
+}
+
+/* ================= Turn loop ================= */
+async function send(text) {
+  text = (text || "").trim();
+  if (!text || busy || !started) return;
+  const lastHer = [...turns].reverse().find((t) => t.role === "assistant");
+  const m = addMine(text);
+  turns.push({ role: "user", content: text });
+  const record = { text, fix: null, why: "" };
+  mine.push(record);
+  if (prefs.fix !== "off") checkSpanish(text, lastHer ? lastHer.content : "", m, record);
+  await reply();
+}
+
+async function reply(kickoff) {
+  busy = true; setComposer();
+  setMood("thinking");
+  const h = addHer();
+  if (!sample) {
+    // No Claude in this view: a fixed greeting so the page still shows what it does.
+    const t = kickoff ? "¡Hola! Soy Valeria. Bienvenido a mi café. ¿Quieres un café de olla?" : "Perdón, ahorita no puedo platicar. Abre esta página en la app de Claude.";
+    renderHer(h, t, true); herTools(h); speakAll(t); busy = false; setComposer();
+    return;
+  }
+  Speech.begin();
+  let text = "";
+  try {
+    const res = await sample(buildInput(), {
+      modelTier: "quick",
+      cache: false,
+      onText: ({ text: t }) => { text = t; renderHer(h, t, false); Speech.feed(t); },
+    });
+    text = res.text.trim();
+    renderHer(h, text, true);
+    herTools(h);
+    Speech.onIdle = () => { if (prefs.subs === "after" && !h.revealed) { h.revealed = true; renderHer(h, h.text, true); } };
+    Speech.end(text);
+    turns.push({ role: "assistant", content: text });
+  } catch (e) {
+    Speech.stop();
+    const code = e && e.code;
+    if (e && e.text) { renderHer(h, e.text, true); } else h.wrap.remove();
+    if (DEAD.includes(code)) { sample = null; showBanner("Claude isn't available for this page right now, so Valeria can't answer. Open it in the Claude app and allow it to use Claude."); }
+    else note(ERR[code] || ERR.upstream_error, true);
+    // An unanswered message stays in the history; the next one continues from it.
+    setMood("listening");
+  } finally {
+    busy = false; setComposer();
+  }
+}
+
+async function checkSpanish(text, context, m, record) {
+  if (!sample) return;
+  try {
+    const j = await sample.json(`A Spanish learner at CEFR ${prefs.level} said this in a casual chat with a Mexican friend. It may come from voice dictation, so ignore punctuation, capitalization, missing accents and missing ¿¡.
+${context ? `Their friend had just said: "${context}"\n` : ""}Learner: "${text}"
+
+If it has a real grammar or vocabulary mistake, or English words, reply {"ok": false, "fix": "the corrected sentence, natural Mexican Spanish, as close to theirs as possible", "why": "a very short English explanation, at most 12 words"}.
+If it's correct and natural, reply {"ok": true}.
+Reply with only the JSON.`, { modelTier: "quick", cache: false });
+    if (!j || j.ok !== false || typeof j.fix !== "string" || !j.fix.trim()) {
+      const ok = el("span", "tool okbtn", "✓"); ok.title = "Looks right"; m.tools.append(ok);
+      return;
+    }
+    if (norm(j.fix) === norm(text)) return;
+    record.fix = j.fix.trim(); record.why = typeof j.why === "string" ? j.why.trim() : "";
+    const box = el("div", "fix");
+    const b = el("b", null, "Mejor dicho: "); box.append(b, document.createTextNode(record.fix));
+    if (record.why) box.append(el("small", null, record.why));
+    if (prefs.fix === "show") { m.wrap.append(box); scrollDown(); return; }
+    const btn = el("button", "tool fixbtn", "💡"); btn.type = "button"; btn.setAttribute("aria-label", "Show correction");
+    btn.onclick = () => { if (box.isConnected) box.remove(); else { m.wrap.append(box); scrollDown(); } };
+    m.tools.append(btn);
+  } catch (e) { /* corrections are optional; the chat carries on */ }
+}
+const norm = (s) => String(s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-zñ0-9 ]/g, "").replace(/\s+/g, " ").trim();
+
+/* ================= Composer ================= */
+let autoT = null;
+function setComposer() {
+  $("msg").disabled = !started;
+  $("send").disabled = !started || busy;
+}
+$("form").addEventListener("submit", (e) => {
+  e.preventDefault();
+  clearAuto();
+  const t = $("msg").value; if (!t.trim() || busy) return;
+  $("msg").value = "";
+  send(t);
+});
+// Optional auto-send for keyboard dictation: send after the text stops changing.
+$("msg").addEventListener("input", () => {
+  V.listening = performance.now();
+  if (!prefs.auto) return;
+  clearAuto();
+  if (!$("msg").value.trim()) return;
+  const bar = $("autoBar");
+  bar.style.transition = "none"; bar.style.width = "0";
+  requestAnimationFrame(() => { bar.style.transition = `width ${prefs.autoMs}ms linear`; bar.style.width = "100%"; });
+  autoT = setTimeout(() => { clearAuto(); if (!busy) $("form").requestSubmit(); }, prefs.autoMs);
+});
+function clearAuto() { clearTimeout(autoT); autoT = null; const bar = $("autoBar"); bar.style.transition = "none"; bar.style.width = "0"; }
+
+/* ================= Voice output ================= */
+const synth = window.speechSynthesis || null;
+let VOICES = [];
+function loadVoices() {
+  if (!synth) return;
+  VOICES = synth.getVoices().filter((v) => /^es([-_]|$)/i.test(v.lang));
+  const rank = (v) => (/es[-_]mx/i.test(v.lang) ? 0 : /es[-_](us|419)/i.test(v.lang) ? 1 : 2) * 10 - (/natural|online|neural|premium|enhanced/i.test(v.name) ? 3 : 0) - (/paulina|dalia|renata|m[oó]nica|sabina|ximena|marisol|lupe/i.test(v.name) ? 1 : 0);
+  VOICES.sort((a, b) => rank(a) - rank(b));
+  if (!$("settings").hidden) renderSettings();
+}
+if (synth) { loadVoices(); if (synth.addEventListener) synth.addEventListener("voiceschanged", loadVoices); else synth.onvoiceschanged = loadVoices; }
+function voice() { return VOICES.find((v) => v.voiceURI === prefs.voiceURI) || VOICES[0] || null; }
+
+// Speaks a streaming reply sentence by sentence and drives the caption and mouth.
+const Speech = {
+  queue: [], spoken: 0, active: false, gen: 0,
+  begin() { this.stop(); this.spoken = 0; },
+  feed(text) {
+    const re = /[^.!?…]*[.!?…]+["'»”)]*\s+/y; re.lastIndex = this.spoken; let m;
+    while ((m = re.exec(text))) { this.push(m[0]); this.spoken = re.lastIndex; }
+  },
+  end(text) { const rest = text.slice(this.spoken); if (rest.trim()) this.push(rest); this.spoken = text.length; this.ended = true; this.maybeIdle(); },
+  push(s) { s = s.replace(/\p{Extended_Pictographic}/gu, "").replace(/[*_#`~\[\]]/g, "").trim(); if (s) { this.queue.push(s); this.next(); } },
+  next() {
+    if (this.active || !this.queue.length) return;
+    const s = this.queue.shift(); this.active = true;
+    const gen = this.gen;
+    showCaption(s); setMood("speaking"); V.talkUntil = Infinity;
+    const finish = () => { if (gen !== this.gen) return; this.active = false; V.talkUntil = 0; this.next(); this.maybeIdle(); };
+    if (!prefs.voice || !synth) { V.talkUntil = performance.now() + 600 + s.length * 55; setTimeout(finish, 600 + s.length * 55); return; }
+    const u = new SpeechSynthesisUtterance(s);
+    const v = voice(); if (v) { u.voice = v; u.lang = v.lang; } else u.lang = "es-MX";
+    u.rate = clamp(prefs.rate * LEVELS[prefs.level].rate * (this.rateOverride || 1), 0.5, 1.6);
+    u.pitch = 1.05;
+    u.onboundary = () => { V.kick = 1; };
+    let fb = setTimeout(finish, 4000 + s.length * 130);   // some WebViews never fire onend
+    u.onend = u.onerror = () => { clearTimeout(fb); finish(); };
+    synth.speak(u);
+  },
+  maybeIdle() {
+    if (this.active || this.queue.length || !this.ended) return;
+    this.ended = false; this.rateOverride = 1; hideCaptionSoon(); setMood("listening");
+    const cb = this.onIdle; this.onIdle = null; if (cb) cb();
+  },
+  stop() {
+    this.gen++; this.queue = []; this.active = false; this.ended = false; if (synth) synth.cancel(); V.talkUntil = 0;
+    const cb = this.onIdle; this.onIdle = null; if (cb) cb();   // stopping early still reveals "after" text
+  },
+};
+function speakAll(text, rate) { Speech.begin(); Speech.rateOverride = rate || 1; Speech.push(text); Speech.end(text); }
+
+let capT = null;
+function showCaption(s) {
+  clearTimeout(capT);
+  const box = $("capBox");
+  box.hidden = false;
+  const veil = prefs.subs !== "show";
+  box.textContent = veil ? "🔊 Escucha…" : s;
+  box.classList.toggle("veiled", veil);
+}
+function hideCaptionSoon() { clearTimeout(capT); capT = setTimeout(() => { $("capBox").hidden = true; }, 2500); }
+$("capBox").addEventListener("click", () => Speech.stop());
+
+/* ================= Mood chip ================= */
+const MOOD = { idle: "Café La Conchita", listening: "● Te escucha", thinking: "● Pensando…", speaking: "● Hablando" };
+function setMood(m) { V.mood = m; $("mood").dataset.m = m; $("mood").textContent = MOOD[m] || m; }
+
+/* ================= 3D café ================= */
+const V = { mood: "idle", talkUntil: 0, kick: 0, open: 0, blinkAt: 2, blinkT: 0, listening: 0 };
+let renderer, scene, camera, parts = {};
+function initScene() {
+  if (typeof THREE === "undefined") return;
+  const canvas = $("scene");
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color("#2a1f33");
+  camera = new THREE.PerspectiveCamera(30, 1, 0.1, 40);
+  camera.position.set(0, 1.5, 2.45);
+  camera.lookAt(0, 1.4, 0);
+  scene.add(new THREE.HemisphereLight(0xfff1e0, 0x3a2a30, 0.85));
+  const key = new THREE.DirectionalLight(0xffe2bf, 0.75); key.position.set(1.2, 2.4, 2.2); scene.add(key);
+  const rim = new THREE.DirectionalLight(0x9fb6ff, 0.35); rim.position.set(-2, 2, -1.5); scene.add(rim);
+  buildCafe();
+  buildValeria();
+  const fit = () => {
+    const w = canvas.clientWidth, h = canvas.clientHeight; if (!w || !h) return;
+    renderer.setSize(w, h, false); camera.aspect = w / h;
+    camera.fov = w / h < 1 ? 36 : 30;            // tall stage on narrow phones: widen a little
+    camera.updateProjectionMatrix();
+  };
+  fit();
+  if (window.ResizeObserver) new ResizeObserver(fit).observe($("stage")); else window.addEventListener("resize", fit);
+  requestAnimationFrame(loop);
+}
+
+const MAT = {};
+const mat = (c, o) => { const k = c + JSON.stringify(o || {}); return MAT[k] || (MAT[k] = new THREE.MeshLambertMaterial(Object.assign({ color: c }, o || {}))); };
+function mesh(geo, c, x, y, z, p) { const m = new THREE.Mesh(geo, typeof c === "string" ? mat(c) : c); m.position.set(x, y, z); (p || scene).add(m); return m; }
+const boxG = (w, h, d) => new THREE.BoxGeometry(w, h, d);
+const sphG = (r, ws = 20, hs = 14) => new THREE.SphereGeometry(r, ws, hs);
+const cylG = (r1, r2, h, s = 18) => new THREE.CylinderGeometry(r1, r2, h, s);
+function canvasTex(w, h, draw) { const c = document.createElement("canvas"); c.width = w; c.height = h; draw(c.getContext("2d"), w, h); const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; t.anisotropy = 4; return t; }
+
+function buildCafe() {
+  // Back wall: painted añil, talavera band, chalkboard menu.
+  const wall = canvasTex(1024, 768, (g, w, h) => {
+    g.fillStyle = "#24426e"; g.fillRect(0, 0, w, h);
+    g.fillStyle = "#1c3357"; for (let i = 0; i < 40; i++) g.fillRect(Math.random() * w, Math.random() * h * 0.6, 60 + Math.random() * 120, 2);
+    const ty = h * 0.62, ts = 48;
+    for (let x = 0; x < w; x += ts) for (let r = 0; r < 3; r++) {
+      const y = ty + r * ts;
+      g.fillStyle = "#f6f1e6"; g.fillRect(x, y, ts, ts);
+      g.strokeStyle = "#2b4fa8"; g.lineWidth = 4;
+      g.beginPath(); g.arc(x + ts / 2, y + ts / 2, ts * 0.28, 0, Math.PI * 2); g.stroke();
+      g.fillStyle = (x / ts + r) % 2 ? "#2b4fa8" : "#f2a11f";
+      g.beginPath(); g.arc(x + ts / 2, y + ts / 2, ts * 0.1, 0, Math.PI * 2); g.fill();
+      for (const [cx, cy] of [[x, y], [x + ts, y], [x, y + ts], [x + ts, y + ts]]) { g.fillStyle = "#2b4fa8"; g.beginPath(); g.arc(cx, cy, ts * 0.16, 0, Math.PI * 2); g.fill(); }
+    }
+    // chalkboard
+    const bx = w * 0.585, by = h * 0.14, bw = w * 0.2, bh = h * 0.4;
+    g.fillStyle = "#6b4a2b"; g.fillRect(bx - 10, by - 10, bw + 20, bh + 20);
+    g.fillStyle = "#1f2a24"; g.fillRect(bx, by, bw, bh);
+    g.fillStyle = "#f4efe4"; g.textAlign = "center";
+    g.font = "bold 28px 'Bricolage Grotesque', 'Trebuchet MS', sans-serif"; g.fillText("La Conchita", bx + bw / 2, by + 42);
+    g.font = "20px 'Atkinson Hyperlegible', 'Trebuchet MS', sans-serif"; g.textAlign = "left";
+    [["Café de olla", "$35"], ["Chocolate", "$40"], ["Concha", "$18"], ["Cuernito", "$22"], ["Chilaquiles", "$95"]].forEach(([a, b], i) => {
+      g.fillText(a, bx + 14, by + 84 + i * 42); g.textAlign = "right"; g.fillText(b, bx + bw - 14, by + 84 + i * 42); g.textAlign = "left";
+    });
+  });
+  mesh(new THREE.PlaneGeometry(4.4, 3.3), new THREE.MeshLambertMaterial({ map: wall }), 0, 1.45, -1.3);
+
+  // Papel picado across the top.
+  const colors = ["#d81b6a", "#f2a11f", "#2e9e8f", "#7b4bc4", "#f05a28", "#2b4fa8"];
+  const string = mesh(cylG(0.004, 0.004, 3.2, 4), "#eee", 0, 2.1, -0.9); string.rotation.z = Math.PI / 2;
+  colors.concat(colors).forEach((c, i) => {
+    const t = canvasTex(128, 160, (g, w, h) => {
+      g.fillStyle = c; g.fillRect(0, 0, w, h - 20);
+      g.beginPath(); for (let x = 0; x <= w; x += 16) { g.lineTo(x, h - 20); g.lineTo(x + 8, h); } g.lineTo(w, h - 20); g.fill();
+      g.globalCompositeOperation = "destination-out";
+      g.beginPath(); g.arc(w / 2, 62, 26, 0, Math.PI * 2); g.fill();
+      for (let k = 0; k < 6; k++) { const a = (k / 6) * Math.PI * 2; g.beginPath(); g.arc(w / 2 + Math.cos(a) * 40, 62 + Math.sin(a) * 40, 7, 0, Math.PI * 2); g.fill(); }
+      for (let x = 14; x < w; x += 22) { g.fillRect(x, 112, 8, 8); }
+    });
+    const flag = mesh(new THREE.PlaneGeometry(0.2, 0.25), new THREE.MeshLambertMaterial({ map: t, transparent: true, side: THREE.DoubleSide }), -1.45 + i * 0.265, 1.98, -0.9);
+    flag.userData.sway = i;
+    (parts.flags = parts.flags || []).push(flag);
+  });
+
+  // Shelf with jars of pan dulce on the left.
+  mesh(boxG(0.9, 0.04, 0.25), "#7a5233", -1.05, 1.62, -1.15);
+  ["#e0a35e", "#d97a8c", "#c99257"].forEach((c, i) => {
+    mesh(cylG(0.08, 0.08, 0.2), new THREE.MeshLambertMaterial({ color: "#cfe7f2", transparent: true, opacity: 0.45 }), -1.35 + i * 0.3, 1.74, -1.15);
+    mesh(sphG(0.055), c, -1.35 + i * 0.3, 1.71, -1.15);
+  });
+  // Pendant lamps.
+  for (const x of [-1.25, 1.25]) {
+    mesh(cylG(0.004, 0.004, 0.5, 4), "#222", x, 2.5, -0.4);
+    mesh(cylG(0.05, 0.14, 0.12, 20), "#f2a11f", x, 2.21, -0.4);
+    mesh(sphG(0.045), new THREE.MeshBasicMaterial({ color: "#fff4cf" }), x, 2.15, -0.4);
+  }
+  const warm = new THREE.PointLight(0xffd59a, 0.55, 5); warm.position.set(0, 2.0, 0.3); scene.add(warm);
+
+  // Counter in front of Valeria: wood top, talavera front.
+  mesh(boxG(2.8, 0.06, 0.6), "#8a5a33", 0, 1.0, 0.42);
+  const front = canvasTex(512, 256, (g, w, h) => {
+    const s = 64;
+    for (let x = 0; x < w; x += s) for (let y = 0; y < h; y += s) {
+      g.fillStyle = "#f6f1e6"; g.fillRect(x, y, s, s);
+      g.fillStyle = "#2b4fa8"; g.beginPath(); g.moveTo(x + s / 2, y + 6); g.lineTo(x + s - 6, y + s / 2); g.lineTo(x + s / 2, y + s - 6); g.lineTo(x + 6, y + s / 2); g.fill();
+      g.fillStyle = "#f2a11f"; g.beginPath(); g.arc(x + s / 2, y + s / 2, 7, 0, Math.PI * 2); g.fill();
+      g.strokeStyle = "#c9c0ae"; g.strokeRect(x, y, s, s);
+    }
+  });
+  front.wrapS = THREE.RepeatWrapping; front.repeat.set(3, 1);
+  mesh(boxG(2.8, 1.0, 0.04), new THREE.MeshLambertMaterial({ map: front }), 0, 0.5, 0.72);
+
+  // A clay jarrito of café de olla and a pink concha on the counter.
+  const jar = new THREE.Group(); jar.position.set(0.42, 1.03, 0.5); scene.add(jar);
+  mesh(cylG(0.045, 0.035, 0.1, 20), "#a8572e", 0, 0.05, 0, jar);
+  mesh(cylG(0.047, 0.047, 0.012, 20), "#3b1f12", 0, 0.098, 0, jar);
+  const handle = mesh(new THREE.TorusGeometry(0.03, 0.008, 8, 16, Math.PI), "#a8572e", 0.05, 0.05, 0, jar); handle.rotation.z = -Math.PI / 2;
+  const concha = mesh(new THREE.SphereGeometry(0.075, 20, 12, 0, Math.PI * 2, 0, Math.PI / 2), mat("#e9a7b8"), -0.45, 1.03, 0.48);
+  concha.scale.y = 0.7;
+  mesh(cylG(0.1, 0.1, 0.01, 24), "#f6f1e6", -0.45, 1.035, 0.48);
+}
+
+function buildValeria() {
+  const root = new THREE.Group(); scene.add(root); parts.root = root;
+  const skin = "#b9805a", shirt = "#2e9e8f", apron = "#d81b6a", hair = "#2a1a14";
+  // torso, apron, shoulders, arms
+  mesh(cylG(0.16, 0.2, 0.52, 20), shirt, 0, 1.12, 0, root);
+  mesh(boxG(0.32, 0.4, 0.03), apron, 0, 1.07, 0.165, root);
+  mesh(boxG(0.03, 0.18, 0.02), apron, -0.09, 1.31, 0.13, root).rotation.z = 0.25;
+  mesh(boxG(0.03, 0.18, 0.02), apron, 0.09, 1.31, 0.13, root).rotation.z = -0.25;
+  for (const s of [-1, 1]) {
+    mesh(sphG(0.085), shirt, 0.19 * s, 1.33, 0, root);
+    limb(root, [0.2 * s, 1.31, 0.0], [0.19 * s, 1.08, 0.15], 0.05, shirt);
+    limb(root, [0.19 * s, 1.08, 0.15], [0.13 * s, 1.03, 0.33], 0.042, skin);
+    mesh(sphG(0.045), skin, 0.13 * s, 1.03, 0.35, root);
+  }
+  mesh(cylG(0.045, 0.05, 0.12), skin, 0, 1.43, 0, root);
+
+  // head
+  const head = new THREE.Group(); head.position.set(0, 1.565, 0); root.add(head); parts.head = head;
+  const face = mesh(sphG(0.13, 28, 20), skin, 0, 0, 0, head); face.scale.set(1, 1.12, 1.02);
+  const cap = mesh(new THREE.SphereGeometry(0.139, 28, 16, 0, Math.PI * 2, 0, Math.PI * 0.56), hair, 0, 0.012, -0.012, head);
+  cap.rotation.x = -0.32; cap.scale.set(1.03, 1.12, 1.06);
+  mesh(sphG(0.072), hair, 0, 0.12, -0.11, head);                       // bun
+  mesh(new THREE.TorusGeometry(0.06, 0.012, 8, 20), "#f2a11f", 0, 0.12, -0.11, head).rotation.x = 1.2; // scrunchie
+  for (const s of [-1, 1]) {
+    const side = mesh(sphG(0.06), hair, 0.115 * s, -0.01, -0.04, head); side.scale.set(0.55, 1.6, 1);
+    const hoop = mesh(new THREE.TorusGeometry(0.02, 0.0035, 6, 18), "#e9b949", 0.128 * s, -0.075, 0.0, head); hoop.rotation.y = Math.PI / 2;
+    const cheek = mesh(sphG(0.024), new THREE.MeshLambertMaterial({ color: "#e0708a", transparent: true, opacity: 0.35 }), 0.07 * s, -0.035, 0.105, head); cheek.scale.set(1.2, 0.7, 0.4);
+  }
+  // eyes (scaled on blink), irises (move when thinking), brows
+  const eyes = new THREE.Group(); eyes.position.set(0, 0.018, 0); head.add(eyes); parts.eyes = eyes;
+  parts.irises = [];
+  for (const s of [-1, 1]) {
+    const white = mesh(sphG(0.021), new THREE.MeshPhongMaterial({ color: "#fbf6ee", shininess: 60 }), 0.046 * s, 0, 0.113, eyes); white.scale.z = 0.6;
+    const iris = mesh(sphG(0.0125), new THREE.MeshPhongMaterial({ color: "#2a160c", shininess: 90 }), 0.046 * s, 0, 0.124, eyes);
+    iris.userData.base = iris.position.clone(); parts.irises.push(iris);
+    const brow = mesh(boxG(0.052, 0.009, 0.01), hair, 0.047 * s, 0.058, 0.121, head); brow.rotation.z = -0.12 * s; brow.userData.baseY = 0.058;
+    (parts.brows = parts.brows || []).push(brow);
+  }
+  const nose = mesh(sphG(0.017), skin, 0, -0.015, 0.13, head); nose.scale.set(0.85, 1, 1);
+  // mouth: a smile line when closed, a dark opening while she talks
+  const mouth = new THREE.Group(); mouth.position.set(0, -0.062, 0.116); head.add(mouth); parts.mouth = mouth;
+  const smile = mesh(new THREE.TorusGeometry(0.026, 0.0055, 6, 16, Math.PI), "#9c3d4c", 0, 0.012, 0, mouth); smile.rotation.z = Math.PI; parts.smile = smile;
+  const inner = mesh(sphG(0.026), "#4a1622", 0, 0, -0.004, mouth); inner.scale.set(1, 0.05, 0.4); parts.inner = inner;
+  const lip = mesh(sphG(0.026), "#b04a5c", 0, 0.004, 0.002, mouth); lip.scale.set(1.05, 0.12, 0.35); parts.lip = lip;
+}
+
+function limb(parent, a, b, r, c) {
+  const A = new THREE.Vector3(...a), B = new THREE.Vector3(...b);
+  const len = A.distanceTo(B);
+  const m = mesh(cylG(r, r * 0.9, len, 12), c, (A.x + B.x) / 2, (A.y + B.y) / 2, (A.z + B.z) / 2, parent);
+  m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), B.clone().sub(A).normalize());
+  return m;
+}
+
+let lastT = 0;
+function loop(ms) {
+  requestAnimationFrame(loop);
+  if (document.hidden || !renderer) return;
+  const t = ms / 1000, dt = Math.min(0.05, t - lastT || 0.016); lastT = t;
+  const now = performance.now();
+  const talking = now < V.talkUntil;
+  const { root, head, eyes, irises, brows, inner, lip, smile, flags } = parts;
+  // breathing and a little sway
+  root.position.y = Math.sin(t * 1.6) * 0.004;
+  root.rotation.y = Math.sin(t * 0.5) * 0.035;
+  // head: thinking looks up and away, listening tilts toward you and nods while you type
+  let yaw = Math.sin(t * 0.7) * 0.05, pitch = Math.sin(t * 0.9) * 0.02, roll = 0;
+  const typing = now - V.listening < 900;
+  if (V.mood === "thinking") { yaw = 0.18; pitch = -0.12; }
+  else if (V.mood === "listening") { roll = 0.07; if (typing) pitch += Math.sin(t * 6) * 0.03; }
+  else if (talking) { pitch += Math.sin(t * 3.1) * 0.03; yaw += Math.sin(t * 1.9) * 0.04; }
+  head.rotation.y += (yaw - head.rotation.y) * 0.08;
+  head.rotation.x += (pitch - head.rotation.x) * 0.08;
+  head.rotation.z += (roll - head.rotation.z) * 0.06;
+  // eyes: blink every few seconds; look up while thinking
+  if (t > V.blinkAt) { V.blinkT = 0.14; V.blinkAt = t + 2.2 + Math.random() * 3.5; }
+  V.blinkT = Math.max(0, V.blinkT - dt);
+  eyes.scale.y = V.blinkT > 0 ? 0.12 : 1;
+  for (const iris of irises) {
+    const up = V.mood === "thinking" ? 0.006 : 0, side = V.mood === "thinking" ? 0.004 : 0;
+    iris.position.y += (iris.userData.base.y + up - iris.position.y) * 0.1;
+    iris.position.x += (iris.userData.base.x + side - iris.position.x) * 0.1;
+  }
+  const browUp = V.mood === "thinking" ? 0.008 : talking ? Math.max(0, Math.sin(t * 1.4)) * 0.006 : 0;
+  for (const b of brows) b.position.y += (b.userData.baseY + browUp - b.position.y) * 0.15;
+  // mouth: opens with speech, pulses on each word boundary
+  V.kick = Math.max(0, V.kick - dt * 5);
+  const target = talking ? 0.25 + 0.45 * Math.abs(Math.sin(t * 12.5)) * (0.6 + 0.4 * Math.sin(t * 2.7)) + V.kick * 0.3 : 0;
+  V.open += (target - V.open) * 0.35;
+  inner.scale.y = 0.05 + V.open * 0.75;
+  lip.position.y = 0.004 + V.open * 0.012;
+  smile.visible = V.open < 0.12;
+  if (flags) for (const f of flags) f.rotation.x = Math.sin(t * 1.3 + f.userData.sway) * 0.12;
+  renderer.render(scene, camera);
+}
+
+/* ================= Level picker, settings, review ================= */
+function renderLevels() {
+  const box = $("lvls"); box.textContent = "";
+  for (const k of Object.keys(LEVELS)) {
+    const b = el("button", "lv" + (k === prefs.level ? " on" : ""), k); b.type = "button";
+    b.setAttribute("aria-pressed", String(k === prefs.level));
+    b.onclick = () => setLevel(k, false);
+    box.append(b);
+  }
+  $("lvlDesc").textContent = `${prefs.level} · ${LEVELS[prefs.level].name}: ${LEVELS[prefs.level].desc}`;
+  $("lvlBtn").textContent = prefs.level;
+}
+function setLevel(k, announce) {
+  if (k === prefs.level) return;
+  prefs.level = k; prefs.subs = LEVELS[k].subs; savePrefs(); renderLevels();
+  if (!$("settings").hidden) renderSettings();
+  if (announce && started) note(`Level ${k}. Valeria will adjust from her next reply.`);
+}
+$("lvlBtn").onclick = () => { renderSettings(); $("settings").hidden = false; };
+
+function renderSettings() {
+  const lv = $("sLevel"); lv.textContent = "";
+  for (const k of Object.keys(LEVELS)) { const o = el("option", null, `${k} · ${LEVELS[k].name}`); o.value = k; lv.append(o); }
+  lv.value = prefs.level;
+  $("sLevelDesc").textContent = LEVELS[prefs.level].desc;
+  $("sVoice").checked = prefs.voice;
+  const vs = $("sVoiceName"); vs.textContent = "";
+  if (!VOICES.length) { const o = el("option", null, synth ? "No Spanish voices on this device" : "Voices aren't available here"); vs.append(o); vs.disabled = true; }
+  else { vs.disabled = false; for (const v of VOICES) { const o = el("option", null, `${v.name} (${v.lang})`); o.value = v.voiceURI; vs.append(o); } vs.value = (voice() || {}).voiceURI || ""; }
+  $("sRate").value = prefs.rate; $("sRateV").textContent = `${Number(prefs.rate).toFixed(2)}×`;
+  $("sSubs").value = prefs.subs;
+  $("sFix").value = prefs.fix;
+  $("sAuto").checked = prefs.auto;
+  $("sAutoMs").value = prefs.autoMs; $("sAutoV").textContent = `${(prefs.autoMs / 1000).toFixed(1)}s`;
+}
+$("setBtn").onclick = () => { renderSettings(); $("settings").hidden = false; };
+$("sLevel").onchange = (e) => setLevel(e.target.value, true);
+$("sVoice").onchange = (e) => { prefs.voice = e.target.checked; savePrefs(); if (!prefs.voice) Speech.stop(); };
+$("sVoiceName").onchange = (e) => { prefs.voiceURI = e.target.value; savePrefs(); };
+$("sRate").oninput = (e) => { prefs.rate = Number(e.target.value); $("sRateV").textContent = `${prefs.rate.toFixed(2)}×`; savePrefs(); };
+$("sSubs").onchange = (e) => { prefs.subs = e.target.value; savePrefs(); };
+$("sFix").onchange = (e) => { prefs.fix = e.target.value; savePrefs(); };
+$("sAuto").onchange = (e) => { prefs.auto = e.target.checked; savePrefs(); clearAuto(); };
+$("sAutoMs").oninput = (e) => { prefs.autoMs = Number(e.target.value); $("sAutoV").textContent = `${(prefs.autoMs / 1000).toFixed(1)}s`; savePrefs(); };
+$("sTest").onclick = () => speakAll("¡Hola! Soy Valeria. ¿Me escuchas bien?");
+$("sNew").onclick = () => {
+  $("settings").hidden = true;
+  Speech.stop(); turns.length = 0; mine.length = 0; $("log").textContent = ""; $("words").textContent = "";
+  note("New conversation."); reply(true);
+};
+document.querySelectorAll("[data-close]").forEach((b) => { b.onclick = () => { $(b.dataset.close).hidden = true; }; });
+
+$("revBtn").onclick = () => {
+  const list = $("revList"); list.textContent = "";
+  const fixed = mine.filter((m) => m.fix);
+  if (!mine.length) list.append(el("li", null, "Say something to Valeria first."));
+  else if (!fixed.length) list.append(el("li", null, prefs.fix === "off" ? "Corrections are off in Settings." : "No corrections so far. ¡Muy bien!"));
+  for (const m of fixed) {
+    const li = el("li"); li.append(el("span", "was", m.text), el("span", "now", m.fix));
+    if (m.why) li.append(el("span", "why", m.why));
+    list.append(li);
+  }
+  $("wordsBtn").disabled = !sample || !turns.some((t) => t.role === "assistant");
+  $("review").hidden = false;
+};
+$("wordsBtn").onclick = async () => {
+  const btn = $("wordsBtn"); btn.disabled = true; btn.textContent = "Looking…";
+  const herLines = turns.filter((t) => t.role === "assistant").map((t) => t.content).join("\n").slice(-6000);
+  try {
+    const j = await sample.json(`These are lines a Mexican friend said to a Spanish learner at CEFR ${prefs.level}:\n\n${herLines}\n\nPick up to 8 words or short phrases from these lines that are most useful for this learner to remember (skip the most basic words). Reply with only a JSON array of {"es": "word or phrase as used", "en": "short English meaning"}.`, { modelTier: "quick" });
+    const box = $("words"); box.textContent = "";
+    (Array.isArray(j) ? j : []).slice(0, 8).forEach((w) => { if (w && w.es) box.append(el("b", null, String(w.es)), el("span", null, String(w.en || ""))); });
+    if (!box.childNodes.length) box.append(el("span", null, "Nothing new this time."));
+  } catch (e) {
+    $("words").textContent = e && e.code === "rate_limited" ? ERR.rate_limited : "Couldn't get the word list. Try again.";
+  } finally { btn.disabled = false; btn.textContent = "Useful words from this chat"; }
+};
+
+/* ================= Start ================= */
+$("enter").onclick = () => {
+  // Unlock speech on iOS: it has to start inside a tap.
+  if (synth) { try { const u = new SpeechSynthesisUtterance(" "); u.volume = 0; synth.speak(u); } catch (e) {} }
+  $("start").hidden = true;
+  started = true; setComposer();
+  setMood("thinking");
+  const go = () => reply(true);
+  if (sampleState === "waiting" && window.claude && window.claude.use) window.claude.use("sample").then(go, go); else go();
+};
+
+renderLevels();
+setComposer();
+setMood("idle");
+// Draw the café once the fonts are in, so the chalkboard uses them (give up waiting after 1.5 s).
+Promise.race([document.fonts ? document.fonts.ready : Promise.resolve(), new Promise((r) => setTimeout(r, 1500))])
+  .then(() => { try { initScene(); } catch (e) { /* the chat works without the 3D café */ } });
+</script>
