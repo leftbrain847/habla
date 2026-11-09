@@ -1,4 +1,4 @@
-<title>Habla con Valeria</title>
+<title>Habla</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -115,6 +115,9 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px s
 #banner { background: var(--rosa); color: #fff; font-size: 14px; font-weight: 700; padding: 8px 12px; }
 #banner[hidden] { display: none; }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+.pick{display:block;margin:6px 0}
+.pick select{display:block;width:100%;margin-top:4px;padding:9px;border-radius:10px;border:1px solid #cfc6d8;background:#fff;color:#1e1726;color-scheme:light}
+a.btn.save{display:block;text-align:center;text-decoration:none;margin-top:10px}
 </style>
 
 <div id="app">
@@ -145,9 +148,12 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px s
 
 <div class="modal" id="start">
   <div class="card">
-    <h1>Habla con Valeria</h1>
+    <h1>Habla</h1>
     <p>Valeria runs a little café in Coyoacán, Mexico City. Chat with her in Spanish like you would with a friend. She talks back out loud, at your level.</p>
-    <p class="mini">She corrects you the way a friend would: by saying it right in her reply. Tap 💡 under your message to see the correction.</p>
+    <p><b>Practice</b></p>
+    <label class="pick">Mode<select id="mode0"></select></label>
+    <label class="pick" id="row0wrap">Grammar target<select id="row0"></select></label>
+    <p class="mini" id="modeDescStart"></p>
     <p><b>Your level</b> (CEFR). You can change it any time.</p>
     <div class="lvls" id="lvls"></div>
     <p class="mini" id="lvlDesc"></p>
@@ -179,6 +185,12 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px s
       <button class="btn" type="button" id="sTest">Test voice</button>
     </div>
     <div class="set">
+      <h3>Practice</h3>
+      <label>Mode<select id="sMode"></select></label>
+      <label id="sRowWrap">Grammar target<select id="sRow"></select></label>
+      <p class="mini" id="modeDesc"></p>
+    </div>
+    <div class="set" id="fixSet">
       <h3>Corrections</h3>
       <label>
         My mistakes
@@ -202,10 +214,12 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px s
 <div class="modal" id="review" hidden>
   <div class="card" role="dialog" aria-labelledby="revTitle">
     <div class="row"><h2 id="revTitle">Repaso</h2><button class="x" type="button" data-close="review" aria-label="Close">✕</button></div>
-    <p class="mini">Your sentences with a more natural version. Nothing is saved after you close the page.</p>
+    <p class="mini" id="revNote">Your sentences with a more natural version.</p>
     <ul class="rev" id="revList"></ul>
     <button class="btn" type="button" id="wordsBtn">Useful words from this chat</button>
     <div class="words" id="words"></div>
+    <a class="btn save" id="saveNotes" target="_blank" rel="noopener noreferrer" href="#">Save to my notes</a>
+    <p class="mini">Opens the Habla app and adds this chat to Notas. Nothing is saved here after you close the page.</p>
   </div>
 </div>
 
@@ -237,13 +251,50 @@ const LEVELS = {
     rules: "- Fully native, fast, colloquial Mexico City Spanish with zero accommodation for a learner: albures kept clean, wordplay, cultural references, dropped words.\n- Up to three sentences. Never explain or simplify." },
 };
 
+/* ================= Practice config ================= */
+const VCFG = {
+  appUrl: "https://leftbrain847.github.io/habla/",   // where "Save to my notes" sends the chat
+  transcriptMax: 4000,                                 // characters of chat sent back
+  fixesMax: 60,
+};
+const MODES = {
+  rehearse: { name: "Ensaya", target: true, check: false,
+    desc: "She steers the chat toward one grammar target so you use it. No corrections." },
+  review: { name: "Ensaya + repaso", target: true, check: true,
+    desc: "Same as Ensaya, and your mistakes wait in Repaso until the end." },
+  free: { name: "Libre", target: false, check: null,
+    desc: "Open conversation. She says it right in her reply when you slip; 💡 under your message shows the fix." },
+};
+const ROWS = [{"id":"c1-1","c":"Cluster 1 · The pronoun system","t":"Direct object pronouns","r":"me, te, lo, la, nos, los, las — replace the thing or person the verb acts on.","x":["¿Me ves?","Te llamo mañana."]},{"id":"c1-2","c":"Cluster 1 · The pronoun system","t":"Indirect object pronouns","r":"me, te, le, nos, les — who receives or benefits.","x":["Mi mamá me escribió ayer.","¿Te dieron el cambio?"]},{"id":"c1-3","c":"Cluster 1 · The pronoun system","t":"Direct vs indirect","r":"Direct: what the verb acts on. Indirect: who receives it.","x":["Lo llamé ayer.","Le dije la verdad."]},{"id":"c1-4","c":"Cluster 1 · The pronoun system","t":"Placement before a conjugated verb","r":"The pronoun goes right before the conjugated verb, after no.","x":["Te lo digo en serio.","No la conozco."]},{"id":"c1-5","c":"Cluster 1 · The pronoun system","t":"Placement with infinitives and gerunds","r":"Attach to the infinitive or gerund, or put it before the helper verb.","x":["Voy a verlo mañana.","Quiero comprarla."]},{"id":"c1-6","c":"Cluster 1 · The pronoun system","t":"Gustar-type verbs","r":"Indirect object + a verb that agrees with the thing liked.","x":["Me gusta el café.","Me gustan los perros."]},{"id":"c1-7","c":"Cluster 1 · The pronoun system","t":"Other gustar-type verbs","r":"encantar, interesar, molestar, faltar, quedar, importar, parecer.","x":["Me encanta este lugar.","Me interesa la historia."]},{"id":"c1-8","c":"Cluster 1 · The pronoun system","t":"Clarifying and emphasis with a","r":"a mí, a ti, a él/ella, a nosotros... plus the pronoun.","x":["A mí me gusta, pero a ella no.","A ella le encanta bailar."]},{"id":"c1-9","c":"Cluster 1 · The pronoun system","t":"Reflexive pronouns","r":"me, te, se, nos, se — the action lands back on the subject.","x":["Me levanto a las seis.","¿A qué hora te acuestas?"]},{"id":"c1-10","c":"Cluster 1 · The pronoun system","t":"Routine and body","r":"Reflexive + article, not possessive, for your own body and clothes.","x":["Me lavo las manos.","Se cepilla los dientes."]},{"id":"c1-11","c":"Cluster 1 · The pronoun system","t":"Change of state","r":"ponerse, quedarse, volverse, and reflexive emotion verbs = become or get.","x":["Me puse nervioso.","Se puso triste."]},{"id":"c1-12","c":"Cluster 1 · The pronoun system","t":"Meaning shifts with se","r":"Some verbs change meaning when reflexive.","x":["Me voy mañana.","Duermo ocho horas."]},{"id":"c1-13","c":"Cluster 1 · The pronoun system","t":"Double pronouns","r":"Indirect before direct: me lo, te la, nos los.","x":["Me lo dio ayer.","Te la mando hoy."]},{"id":"c1-14","c":"Cluster 1 · The pronoun system","t":"le/les becomes se","r":"Before lo, la, los, las, le and les turn into se.","x":["Se lo di a Juan.","Se la mandé a mi mamá."]},{"id":"c1-15","c":"Cluster 1 · The pronoun system","t":"Commands: usted and tú","r":"Usted uses the opposite vowel; tú looks like the él present.","x":["Espere un momento, por favor.","Espera aquí."]},{"id":"c1-16","c":"Cluster 1 · The pronoun system","t":"Irregular tú commands","r":"pon, haz, di, sal, ten, ve, ven, sé.","x":["Pon la mochila aquí.","Haz la maleta."]},{"id":"c1-17","c":"Cluster 1 · The pronoun system","t":"Negative commands","r":"No + the subjunctive form: no vengas, no se preocupe.","x":["No vengas tarde.","No toques eso."]},{"id":"c1-18","c":"Cluster 1 · The pronoun system","t":"Pronouns with commands","r":"Attached to affirmative commands; before negative ones.","x":["Dámelo.","No me lo des."]},{"id":"c2-1","c":"Cluster 2 · The past","t":"Nosotros preterite","r":"For -ar and -ir verbs it matches the present; context decides.","x":["Ayer hablamos con el guía.","Siempre hablamos en español."]},{"id":"c2-2","c":"Cluster 2 · The past","t":"Nosotros imperfect","r":"-ábamos, -íamos; íbamos, éramos, veíamos.","x":["Hablábamos todos los días.","Comíamos a las siete."]},{"id":"c2-3","c":"Cluster 2 · The past","t":"Regular preterite, all persons","r":"-é, -aste, -ó, -amos, -aron · -í, -iste, -ió, -imos, -ieron.","x":["Hablé con el dueño.","¿Hablaste con ella?"]},{"id":"c2-4","c":"Cluster 2 · The past","t":"Irregular preterite stems","r":"hic-, pus-, dij-, pud-, vin-, traj-, quis-, sup- — no accents.","x":["Hice la reserva ayer.","Puse la llave en la mesa."]},{"id":"c2-5","c":"Cluster 2 · The past","t":"Your big three","r":"fui/fue (ser and ir), estuve, tuve — every person.","x":["Fui al mercado.","Fuimos a Baños."]},{"id":"c2-6","c":"Cluster 2 · The past","t":"-ir stem change in third person","r":"e→i and o→u only in él and ellos: pidió, durmió.","x":["Pidió la cuenta.","Pidieron sopa."]},{"id":"c2-7","c":"Cluster 2 · The past","t":"Spelling changes in yo","r":"-gar → -gué, -car → -qué, -zar → -cé.","x":["Llegué tarde.","Busqué el hostal."]},{"id":"c2-8","c":"Cluster 2 · The past","t":"i becomes y in third person","r":"leyó, creyeron, oyó, cayó, construyeron.","x":["Leyó el libro en un día.","No me creyeron."]},{"id":"c2-9","c":"Cluster 2 · The past","t":"Imperfect forms","r":"-aba, -ía · only three irregulars: era, iba, veía.","x":["Caminaba todos los días.","Tenía veinte años."]},{"id":"c2-10","c":"Cluster 2 · The past","t":"Preterite vs imperfect","r":"Completed event vs background, description, habit, or ongoing.","x":["Llovía cuando salí.","Caminábamos cuando vimos el lago."]},{"id":"c2-11","c":"Cluster 2 · The past","t":"Trigger words","r":"A starting point only — meaning decides, not the word.","x":["Ayer fui al centro.","Una vez comí cuy."]},{"id":"c2-12","c":"Cluster 2 · The past","t":"Verbs that shift meaning in the preterite","r":"conocí = met · supe = found out · no quise = refused · pude = managed.","x":["Conocí a Ana en Quito.","Conocía a Ana."]},{"id":"c2-13","c":"Cluster 2 · The past","t":"Past progressive","r":"estaba + gerund — in progress at a past moment.","x":["Estaba comiendo cuando llamaste.","¿Qué estabas haciendo?"]},{"id":"c2-14","c":"Cluster 2 · The past","t":"Present progressive, and when not","r":"estar + gerund only for right now; states and plans use the plain present.","x":["Estoy leyendo un libro.","¿Qué estás haciendo?"]},{"id":"c3-1","c":"Cluster 3 · Decision pairs","t":"ser / estar","r":"ser: identity, traits, origin, job, time. estar: state, condition, location.","x":["Es alto.","Está cansado."]},{"id":"c3-2","c":"Cluster 3 · Decision pairs","t":"ser for events","r":"Events take ser, even with a location.","x":["La fiesta es en mi casa.","La reunión es a las diez."]},{"id":"c3-3","c":"Cluster 3 · Decision pairs","t":"ser / estar change meaning","r":"Same adjective, different meaning.","x":["Es listo.","Está listo."]},{"id":"c3-4","c":"Cluster 3 · Decision pairs","t":"hay / está","r":"hay: something exists (unspecified). está: where a specific thing is.","x":["Hay un banco en la esquina.","El banco está en la esquina."]},{"id":"c3-5","c":"Cluster 3 · Decision pairs","t":"saber / conocer","r":"saber: facts and skills. conocer: people, places, familiarity.","x":["Sé nadar.","Sé dónde está."]},{"id":"c3-6","c":"Cluster 3 · Decision pairs","t":"por / para","r":"por: cause, exchange, duration, through. para: purpose, destination, deadline, recipient.","x":["Gracias por la ayuda.","Este regalo es para ti."]},{"id":"c3-7","c":"Cluster 3 · Decision pairs","t":"qué / cuál","r":"qué: definitions and before nouns. cuál: choosing among options.","x":["¿Qué es esto?","¿Cuál es tu número?"]},{"id":"c3-8","c":"Cluster 3 · Decision pairs","t":"muy / mucho","r":"muy before adjectives and adverbs; mucho with nouns and verbs.","x":["Es muy bonito.","Hablas muy bien."]},{"id":"c3-9","c":"Cluster 3 · Decision pairs","t":"bueno / bien","r":"bueno is an adjective (buen before masculine nouns); bien is an adverb.","x":["Es un buen guía.","Explica muy bien."]},{"id":"c3-10","c":"Cluster 3 · Decision pairs","t":"Personal a","r":"A person as direct object takes a.","x":["Veo a María.","Veo la casa."]},{"id":"c3-11","c":"Cluster 3 · Decision pairs","t":"pedir / preguntar","r":"pedir: ask for something. preguntar: ask a question.","x":["Pedí la cuenta.","Pregunté la hora."]},{"id":"c3-12","c":"Cluster 3 · Decision pairs","t":"llevar / traer","r":"llevar: toward there. traer: toward here.","x":["Lo llevo a tu casa.","Tráelo aquí."]},{"id":"c4-1","c":"Cluster 4 · Constructions","t":"hacer for weather","r":"hace + noun; rain and snow use their own verbs.","x":["Hace frío.","Hace calor."]},{"id":"c4-2","c":"Cluster 4 · Constructions","t":"hace + time","r":"hace + time = ago; hace + time + que = for (still going).","x":["Llegué hace dos días.","Hace un año que estudio español."]},{"id":"c4-3","c":"Cluster 4 · Constructions","t":"hacer: core uses","r":"hacer la maleta, hacer una pregunta, hacer falta.","x":["Hice la maleta anoche.","¿Puedo hacer una pregunta?"]},{"id":"c4-4","c":"Cluster 4 · Constructions","t":"hay in every tense","r":"hay, había, hubo, va a haber — always singular.","x":["Hay un problema.","Había mucha gente."]},{"id":"c4-5","c":"Cluster 4 · Constructions","t":"hay que vs tener que","r":"hay que: general obligation. tener que: a specific person.","x":["Hay que salir temprano.","Tengo que salir temprano."]},{"id":"c4-6","c":"Cluster 4 · Constructions","t":"poner and ponerse","r":"poner = put; ponerse = put on (clothes) or become.","x":["Pon la mesa.","Puse el teléfono a cargar."]},{"id":"c4-7","c":"Cluster 4 · Constructions","t":"tener expressions","r":"English uses 'be'; Spanish uses tener + noun.","x":["Tengo hambre.","Tengo sed."]},{"id":"c4-8","c":"Cluster 4 · Constructions","t":"Other helper verbs","r":"acabar de, volver a, empezar a, dejar de + infinitive.","x":["Acabo de llegar.","Volví a llamar."]},{"id":"c4-9","c":"Cluster 4 · Constructions","t":"Comparatives","r":"más ... que · menos ... que · tan ... como · tanto ... como.","x":["Quito es más grande que Baños.","El bus es menos caro que el taxi."]},{"id":"c4-10","c":"Cluster 4 · Constructions","t":"Irregular comparatives","r":"mejor, peor, mayor, menor.","x":["Este café es mejor.","El clima está peor hoy."]},{"id":"c4-11","c":"Cluster 4 · Constructions","t":"Superlatives","r":"el más ... de · -ísimo for 'really'.","x":["Es el más alto de la familia.","Es la montaña más alta del país."]},{"id":"c4-12","c":"Cluster 4 · Constructions","t":"Double negatives","r":"After the verb, a negative word still needs no before it.","x":["No veo nada.","No viene nadie."]},{"id":"c4-13","c":"Cluster 4 · Constructions","t":"Negative word first","r":"Put the negative word first and drop the no.","x":["Nunca voy.","Nadie viene."]},{"id":"c4-14","c":"Cluster 4 · Constructions","t":"algo/nada · alguien/nadie · siempre/nunca","r":"The positive and negative pairs.","x":["¿Quieres algo? No, nada.","¿Hay alguien? No, nadie."]},{"id":"c4-15","c":"Cluster 4 · Constructions","t":"algún / ningún","r":"Shortened before masculine singular nouns; ninguno stands alone.","x":["¿Tienes algún libro?","No tengo ninguno."]},{"id":"c4-16","c":"Cluster 4 · Constructions","t":"Check: yo-go present","r":"tengo, pongo, hago, salgo, digo, vengo, traigo.","x":["Tengo tiempo.","Pongo la mesa."]},{"id":"c4-17","c":"Cluster 4 · Constructions","t":"Check: present stem changers","r":"e→ie, o→ue, e→i, u→ue — but never in nosotros.","x":["Quiero ir.","Puedo ayudarte."]},{"id":"ag-1","c":"Running thread · Agreement","t":"Every noun with its article","r":"Some common nouns break the -o/-a pattern.","x":["la mano","el día"]},{"id":"ag-2","c":"Running thread · Agreement","t":"-ma words","r":"Many -ma words are masculine — but not all.","x":["el tema","el sistema"]},{"id":"ag-3","c":"Running thread · Agreement","t":"Other endings","r":"-ción, -dad, -tud feminine · -or, -aje masculine.","x":["la estación","la ciudad"]},{"id":"ag-4","c":"Running thread · Agreement","t":"Adjectives agree","r":"Gender and number follow the noun.","x":["las casas blancas","los libros viejos"]},{"id":"ag-5","c":"Running thread · Agreement","t":"Agreement through the sentence","r":"Article, noun, verb, and adjective all match.","x":["Las chicas están cansadas.","Los caminos estaban mojados."]},{"id":"ag-6","c":"Running thread · Agreement","t":"el before stressed a-","r":"Feminine nouns starting with stressed a take el in the singular — they stay feminine.","x":["el agua fría","el águila"]}];
+const rowById = (id) => ROWS.find((r) => r.id === id) || null;
+
 /* ================= Prefs (this browser only) ================= */
-let prefs = { level: "A2", voice: true, voiceURI: "", rate: 1, subs: "show", fix: "tap", auto: false, autoMs: 2000 };
+let prefs = { mode: "free", row: "", level: "A2", voice: true, voiceURI: "", rate: 1, subs: "show", fix: "tap", auto: false, autoMs: 2000 };
 try { prefs = Object.assign(prefs, JSON.parse(localStorage.getItem("habla-page-prefs") || "{}")); } catch (e) {}
 if (!LEVELS[prefs.level]) prefs.level = "A2";
+// The Habla app links here with #m=<mode>&lvl=<level>&row=<id>. Only known values are taken.
+function readHandoff() {
+  let q = "";
+  try { q = (location.hash || "").replace(/^#/, "") || (location.search || "").replace(/^\?/, ""); } catch (e) {}
+  const p = new URLSearchParams(q);
+  if (MODES[p.get("m")]) prefs.mode = p.get("m");
+  if (LEVELS[p.get("lvl")]) prefs.level = p.get("lvl");
+  if (rowById(p.get("row"))) prefs.row = p.get("row");
+}
+readHandoff();
+if (!MODES[prefs.mode]) prefs.mode = "free";
+if (!rowById(prefs.row)) prefs.row = ROWS[0].id;
 const savePrefs = () => { try { localStorage.setItem("habla-page-prefs", JSON.stringify(prefs)); } catch (e) {} };
 
 /* ================= Persona prompt ================= */
+function practiceRule() {
+  if (!MODES[prefs.mode].target) return RECAST_RULE;
+  const r = rowById(prefs.row);
+  return `- Today they are practicing one grammar point: ${r.t}. ${r.r} Examples: ${r.x.join(" / ")}
+- Steer the chat toward situations that need it: pick topics and ask questions whose natural answer uses it, and use it yourself often. Don't name or explain the grammar unless they ask.
+- Don't correct them, not even by recasting. Just keep the conversation going.`;
+}
+const RECAST_RULE = "- When they make a mistake, recast it: your reply naturally contains the correct version of the words they got wrong, so they hear it said right (they write \"yo es cansado\" and you say something with \"estás cansado\"). Never lecture; the app shows corrections separately.";
 function rulesTurn() {
   const L = LEVELS[prefs.level];
   return `You are Valeria, 29, from Guadalajara, now living in Coyoacán, Mexico City. You run the counter at Café La Conchita, a small café that sells café de olla and pan dulce (you bake the conchas yourself at 6 a.m.). You love street food, cumbia, your dog Frijol, and Chivas, even though they make you suffer. You're chatting with a friend who is learning Spanish; their native language is English. Your words are read aloud by a text-to-speech voice and shown as subtitles.
@@ -262,7 +313,7 @@ How you talk:
 - Remember what they told you earlier in this chat and bring it back naturally.
 - If they seem lost ("¿qué?", "no entiendo", "más despacio", English, a one-word answer), simplify and rephrase right away.
 - If they use English or ask how to say something, give the Spanish naturally inside your reply and keep going in Spanish.
-- When they make a mistake, recast it: your reply naturally contains the correct version of the words they got wrong, so they hear it said right (they write "yo es cansado" and you say something with "estás cansado"). Never lecture; the app shows corrections separately.
+${practiceRule()}
 - Their messages may come from voice dictation: interpret odd words charitably and never comment on spelling or punctuation.
 - Text in [square brackets] is an instruction from the app, not from your friend. Follow it without mentioning it.
 - If they sincerely ask whether you're an AI, say so briefly and honestly, then keep chatting.
@@ -293,6 +344,7 @@ const DEAD = ["not_granted", "sampling_disabled", "not_declared", "capability_di
 /* ================= Conversation state ================= */
 const turns = [];           // [{role, content}] what Valeria remembers this session
 const mine = [];            // [{text, fix, why}] for the review
+let lastWords = [];         // [{es, en}] from "Useful words"
 let busy = false;
 let started = false;
 
@@ -383,7 +435,8 @@ async function send(text) {
   turns.push({ role: "user", content: text });
   const record = { text, fix: null, why: "" };
   mine.push(record);
-  if (prefs.fix !== "off") checkSpanish(text, lastHer ? lastHer.content : "", m, record);
+  const check = MODES[prefs.mode].check;
+  if (check === true || (check === null && prefs.fix !== "off")) checkSpanish(text, lastHer ? lastHer.content : "", m, record);
   await reply();
 }
 
@@ -442,6 +495,7 @@ Reply with only the JSON.`, { modelTier: "quick", cache: false });
     const box = el("div", "fix");
     const b = el("b", null, "Mejor dicho: "); box.append(b, document.createTextNode(record.fix));
     if (record.why) box.append(el("small", null, record.why));
+    if (MODES[prefs.mode].check === true) return;   // review mode: held for Repaso
     if (prefs.fix === "show") { m.wrap.append(box); scrollDown(); return; }
     const btn = el("button", "tool fixbtn", "💡"); btn.type = "button"; btn.setAttribute("aria-label", "Show correction");
     btn.onclick = () => { if (box.isConnected) box.remove(); else { m.wrap.append(box); scrollDown(); } };
@@ -816,13 +870,14 @@ $("revBtn").onclick = () => {
   const list = $("revList"); list.textContent = "";
   const fixed = mine.filter((m) => m.fix);
   if (!mine.length) list.append(el("li", null, "Say something to Valeria first."));
-  else if (!fixed.length) list.append(el("li", null, prefs.fix === "off" ? "Corrections are off in Settings." : "No corrections so far. ¡Muy bien!"));
+  else if (!fixed.length) list.append(el("li", null, MODES[prefs.mode].check === false ? "Ensaya doesn't check mistakes. Switch to Ensaya + repaso to get them here." : prefs.fix === "off" && MODES[prefs.mode].check === null ? "Corrections are off in Settings." : "No corrections so far. ¡Muy bien!"));
   for (const m of fixed) {
     const li = el("li"); li.append(el("span", "was", m.text), el("span", "now", m.fix));
     if (m.why) li.append(el("span", "why", m.why));
     list.append(li);
   }
   $("wordsBtn").disabled = !sample || !turns.some((t) => t.role === "assistant");
+  $("saveNotes").href = saveLink();
   $("review").hidden = false;
 };
 $("wordsBtn").onclick = async () => {
@@ -831,12 +886,65 @@ $("wordsBtn").onclick = async () => {
   try {
     const j = await sample.json(`These are lines a Mexican friend said to a Spanish learner at CEFR ${prefs.level}:\n\n${herLines}\n\nPick up to 8 words or short phrases from these lines that are most useful for this learner to remember (skip the most basic words). Reply with only a JSON array of {"es": "word or phrase as used", "en": "short English meaning"}.`, { modelTier: "quick" });
     const box = $("words"); box.textContent = "";
-    (Array.isArray(j) ? j : []).slice(0, 8).forEach((w) => { if (w && w.es) box.append(el("b", null, String(w.es)), el("span", null, String(w.en || ""))); });
+    lastWords = (Array.isArray(j) ? j : []).slice(0, 8).filter((w) => w && w.es).map((w) => ({ es: String(w.es), en: String(w.en || "") }));
+    lastWords.forEach((w) => box.append(el("b", null, w.es), el("span", null, w.en)));
+    $("saveNotes").href = saveLink();
     if (!box.childNodes.length) box.append(el("span", null, "Nothing new this time."));
   } catch (e) {
     $("words").textContent = e && e.code === "rate_limited" ? ERR.rate_limited : "Couldn't get the word list. Try again.";
   } finally { btn.disabled = false; btn.textContent = "Useful words from this chat"; }
 };
+
+/* ================= Save to my notes ================= */
+function b64url(str) {
+  const bytes = new TextEncoder().encode(str);
+  let bin = ""; for (const b of bytes) bin += String.fromCharCode(b);
+  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+function localDate() { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 10); }
+function saveLink() {
+  const transcript = turns.map((t) => (t.role === "assistant" ? "Valeria: " : "Tú: ") + t.content).join("\n").slice(-VCFG.transcriptMax);
+  const payload = {
+    v: 1, src: "valeria", date: localDate(), mode: prefs.mode, level: prefs.level,
+    row: MODES[prefs.mode].target ? prefs.row : "",
+    fixes: mine.filter((m) => m.fix).slice(-VCFG.fixesMax).map((m) => ({ was: m.text, now: m.fix, why: m.why })),
+    words: lastWords, transcript,
+  };
+  return VCFG.appUrl + "#import=" + b64url(JSON.stringify(payload));
+}
+
+/* ================= Practice pickers ================= */
+function fillPractice(modeSel, rowSel, rowWrap, descEl) {
+  modeSel.textContent = "";
+  for (const k of Object.keys(MODES)) { const o = el("option", null, MODES[k].name); o.value = k; modeSel.append(o); }
+  modeSel.value = prefs.mode;
+  if (!rowSel.options.length) {
+    let g = null;
+    for (const r of ROWS) {
+      if (!g || g.label !== r.c) { g = document.createElement("optgroup"); g.label = r.c; rowSel.append(g); }
+      const o = el("option", null, r.t); o.value = r.id; g.append(o);
+    }
+  }
+  rowSel.value = prefs.row;
+  rowWrap.hidden = !MODES[prefs.mode].target;
+  descEl.textContent = MODES[prefs.mode].desc;
+}
+function renderPractice() {
+  fillPractice($("mode0"), $("row0"), $("row0wrap"), $("modeDescStart"));
+  fillPractice($("sMode"), $("sRow"), $("sRowWrap"), $("modeDesc"));
+  $("fixSet").hidden = MODES[prefs.mode].check !== null;
+}
+function setPractice(mode, row) {
+  const changed = mode !== prefs.mode || row !== prefs.row;
+  prefs.mode = mode; prefs.row = row; savePrefs(); renderPractice();
+  if (changed && started) note(MODES[mode].target ? `Practice: ${MODES[mode].name} · ${rowById(row).t}` : `Practice: ${MODES[mode].name}`);
+}
+for (const [m, r] of [["mode0", "row0"], ["sMode", "sRow"]]) {
+  $(m).onchange = () => setPractice($(m).value, prefs.row);
+  $(r).onchange = () => setPractice(prefs.mode, $(r).value);
+}
+renderPractice();
+window.addEventListener("hashchange", () => { readHandoff(); savePrefs(); renderPractice(); });
 
 /* ================= Start ================= */
 $("enter").onclick = () => {

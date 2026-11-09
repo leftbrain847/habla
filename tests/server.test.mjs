@@ -33,7 +33,7 @@ function request(path, { method = 'GET', host = `localhost:${PORT}`, origin } = 
 }
 
 before(async () => {
-  server = spawn(process.execPath, ['server.js'], { cwd: root, env: { ...process.env, PORT: String(PORT), CLAUDE_BIN: 'habla-test-no-claude' } });
+  server = spawn(process.execPath, ['server.js'], { cwd: join(root, 'desktop'), env: { ...process.env, PORT: String(PORT), CLAUDE_BIN: 'habla-test-no-claude' } });
   for (let i = 0; i < 50; i++) {
     try { await request('/'); return; } catch { await new Promise((r) => setTimeout(r, 100)); }
   }
