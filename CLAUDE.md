@@ -1,7 +1,7 @@
 # habla
 
 Public A2→B1 Spanish practice app plus Valeria, a conversation partner.
-- `app/index.html`: the public app, one self-contained file served by GitHub Pages. Config in `HABLA_CFG`. Storage keys start with `es_` (kept from the app's earlier life, so old backups restore).
+- `app/index.html`: the public app, one self-contained file. It is published by the index repo's homepage build (`showcase:` entry `habla`, copied to leftbrain847.github.io/habla/ once merged to main). Don't turn on GitHub Pages for this repo: it would take over that same path. Config in `HABLA_CFG`. Storage keys start with `es_` (kept from the app's earlier life, so old backups restore).
 - `valeria/valeria.html`: runs only as a claude.ai artifact (it calls Claude on the visitor's plan). Published at the URL in `HABLA_CFG.valeriaUrl`; republish that same artifact after changing the file. Config in `VCFG` and `MODES`.
 - `desktop/`: the earlier Windows/Edge version. **Frozen**: security fixes only, no features.
 - Test: `npm test` (offline).
