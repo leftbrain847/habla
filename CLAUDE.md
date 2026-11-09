@@ -1,9 +1,16 @@
 # habla
 
-Voice conversation partner for practicing Mexican Spanish ("Valeria"). Local Node server (`server.js`, no dependencies) + browser UI in `public/`; conversation through Claude Code, Ollama, or the Anthropic API (`lib/providers.js`). `claude-page/habla.html` is a version that runs as a claude.ai artifact.
-- Run: `npm start`, then open http://localhost:3000 in Edge (Windows: double-click `start.cmd`).
-- Test: `npm test` (offline; starts the server on port 3999 and checks it only answers localhost).
-- Security invariants: the server binds 127.0.0.1 only and checks Host and Origin; Claude Code runs with no tools and `--safe-mode`; model and level are allowlisted before they reach the command line. Keep all three.
+Public A2→B1 Spanish practice app plus Valeria, a conversation partner.
+- `app/index.html`: the public app, one self-contained file served by GitHub Pages. Config in `HABLA_CFG`. Storage keys start with `es_` (kept from the app's earlier life, so old backups restore).
+- `valeria/valeria.html`: runs only as a claude.ai artifact (it calls Claude on the visitor's plan). Published at the URL in `HABLA_CFG.valeriaUrl`; republish that same artifact after changing the file. Config in `VCFG` and `MODES`.
+- `desktop/`: the earlier Windows/Edge version. **Frozen**: security fixes only, no features.
+- Test: `npm test` (offline).
+
+Decisions already made:
+- The app never makes network requests; its CSP sets `connect-src 'none'`. Only the Valeria handoff link leaves the page.
+- Valeria → app data travels only in the `#import=` fragment of a link the learner taps. The app validates and caps it, shows it, and adds it only on the learner's tap. Treat it as untrusted input; everything rendered from it goes through `esc()`.
+- Grammar rows (`A2` in the app, `ROWS` in Valeria) share ids; the tests fail if they drift.
+- Security invariants for `desktop/`: the server binds 127.0.0.1 only and checks Host and Origin; Claude Code runs with no tools and `--safe-mode`; model and level are allowlisted before they reach the command line. Keep all three.
 
 ## Working rules for agents (shared across J's repos)
 
